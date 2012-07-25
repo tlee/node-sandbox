@@ -7,19 +7,26 @@ options =
   path: '/statuses/public_timeline.json'
   method: 'GET'
 
-processPublicTimeline = (response) ->
-  tweetData = ''
 
-  # recieved in chunks
-  response.on 'data', (tweets) -> tweetData += "#{tweets} \n"
+writeChunks = (fileName, dataChunks) ->
+  fs.writeFile(fileName, dataChunks, (err) ->
+    throw err if (err)
+    console.log("It's saved!")
+  )
+
+
+processPublicTimeline = (response) ->
+  allChunks = ''
+  firstChunk  = ''
+
+  # recieved in chunks, couple event tests
+  response.once 'data', (tweets) -> firstChunk = "#{tweets} \n"
+  response.on 'data', (tweets) -> allChunks += "#{tweets} \n"
 
   # finished? ok, write the data to a file
-  response.on('end', ->
-    fs.writeFile('blather.txt', tweetData, (err) ->
-      throw err if (err)
-      console.log("It's saved!")
-    )
-  )
+  response.on 'end', () -> writeChunks('once.txt', firstChunk)
+  response.on 'end', () -> writeChunks('many.txt', allChunks)
+
 
 # make the request, and then end it, to close the connection
 http.request(options, processPublicTimeline).end()
